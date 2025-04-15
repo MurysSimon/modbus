@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/simonvetter/modbus"
+	"github.com/MurysSimon/modbus"
 )
 
 func main() {
