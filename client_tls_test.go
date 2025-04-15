@@ -3,8 +3,8 @@ package modbus
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"io"
 	"fmt"
+	"io"
 	"net"
 	"testing"
 	"time"
@@ -191,15 +191,15 @@ iaKCVjivzjP1s/q6adzOOZVlVwm7Xw==
 
 // TestTCPOVerTLSClient tests the TLS layer of the modbus client.
 func TestTCPoverTLSClient(t *testing.T) {
-	var err            error
-	var client         *ModbusClient
-	var serverKeyPair  tls.Certificate
-	var clientKeyPair  tls.Certificate
-	var clientCp       *x509.CertPool
-	var serverCp       *x509.CertPool
+	var err error
+	var client *ModbusClient
+	var serverKeyPair tls.Certificate
+	var clientKeyPair tls.Certificate
+	var clientCp *x509.CertPool
+	var serverCp *x509.CertPool
 	var serverHostPort string
-	var serverChan     chan string
-	var regs           []uint16
+	var serverChan chan string
+	var regs []uint16
 
 	serverChan = make(chan string)
 
@@ -289,7 +289,7 @@ func TestTCPoverTLSClient(t *testing.T) {
 	// attempt to read two registers: since the client cert won't pass
 	// the validation step yet (no cert in server cert pool),
 	// expect a tls error
-	regs, err = client.ReadRegisters(0x1000, 2, INPUT_REGISTER)
+	regs, _, _, err = client.ReadRegisters(0x1000, 2, INPUT_REGISTER)
 	if err == nil {
 		t.Errorf("ReadRegisters() should have failed")
 	}
@@ -308,7 +308,7 @@ func TestTCPoverTLSClient(t *testing.T) {
 	}
 
 	// attempt to read two registers: should succeed
-	regs, err = client.ReadRegisters(0x1000, 2, INPUT_REGISTER)
+	regs, _, _, err = client.ReadRegisters(0x1000, 2, INPUT_REGISTER)
 	if err != nil {
 		t.Errorf("ReadRegisters() should have succeeded, got: %v", err)
 	}
@@ -320,7 +320,7 @@ func TestTCPoverTLSClient(t *testing.T) {
 	}
 
 	// attempt to read another: should succeed
-	regs, err = client.ReadRegisters(0x1002, 1, HOLDING_REGISTER)
+	regs, _, _, err = client.ReadRegisters(0x1002, 1, HOLDING_REGISTER)
 	if err != nil {
 		t.Errorf("ReadRegisters() should have succeeded, got: %v", err)
 	}
@@ -338,15 +338,15 @@ func TestTCPoverTLSClient(t *testing.T) {
 }
 
 func TestTLSClientOnServerTimeout(t *testing.T) {
-	var err            error
-	var client         *ModbusClient
-	var server         *ModbusServer
-	var serverKeyPair  tls.Certificate
-	var clientKeyPair  tls.Certificate
-	var clientCp       *x509.CertPool
-	var serverCp       *x509.CertPool
-	var th	           *tlsTestHandler
-	var reg            uint16
+	var err error
+	var client *ModbusClient
+	var server *ModbusServer
+	var serverKeyPair tls.Certificate
+	var clientKeyPair tls.Certificate
+	var clientCp *x509.CertPool
+	var serverCp *x509.CertPool
+	var th *tlsTestHandler
+	var reg uint16
 
 	th = &tlsTestHandler{}
 	// load server and client keypairs
@@ -373,7 +373,6 @@ func TestTLSClientOnServerTimeout(t *testing.T) {
 		t.Errorf("failed to load client cert into cert pool")
 	}
 
-
 	// load the server cert into the client CA cert pool to get the server cert
 	// accepted by clients
 	clientCp = x509.NewCertPool()
@@ -387,7 +386,7 @@ func TestTLSClientOnServerTimeout(t *testing.T) {
 		TLSServerCert: &serverKeyPair,
 		TLSClientCAs:  serverCp,
 		// disconnect idle clients after 500ms
-		Timeout:       500 * time.Millisecond,
+		Timeout: 500 * time.Millisecond,
 	}, th)
 	if err != nil {
 		t.Errorf("failed to create server: %v", err)
@@ -399,7 +398,7 @@ func TestTLSClientOnServerTimeout(t *testing.T) {
 	}
 
 	// create the modbus client
-	client, err	= NewClient(&ClientConfiguration{
+	client, err = NewClient(&ClientConfiguration{
 		URL:           "tcp+tls://localhost:5802",
 		TLSClientCert: &clientKeyPair,
 		TLSRootCAs:    clientCp,
@@ -415,13 +414,13 @@ func TestTLSClientOnServerTimeout(t *testing.T) {
 	}
 
 	// write a value to register #3: should succeed
-	err = client.WriteRegister(3, 0x0199)
+	_, _, err = client.WriteRegister(3, 0x0199)
 	if err != nil {
 		t.Errorf("Write() should have succeeded, got: %v", err)
 	}
 
 	// attempt to read the value back: should succeed
-	reg, err = client.ReadRegister(3, HOLDING_REGISTER)
+	reg, _, _, err = client.ReadRegister(3, HOLDING_REGISTER)
 	if err != nil {
 		t.Errorf("ReadRegisters() should have succeeded, got: %v", err)
 	}
@@ -434,7 +433,7 @@ func TestTLSClientOnServerTimeout(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	// attempt a read: should fail
-	_, err = client.ReadRegister(3, INPUT_REGISTER)
+	_, _, _, err = client.ReadRegister(3, INPUT_REGISTER)
 	if err == nil {
 		t.Errorf("ReadRegister() should have failed")
 	}
@@ -449,12 +448,12 @@ func TestTLSClientOnServerTimeout(t *testing.T) {
 // runMockTLSServer spins a test TLS server for use with TestTCPoverTLSClient.
 func runMockTLSServer(t *testing.T, serverKeyPair tls.Certificate,
 	serverCp *x509.CertPool, serverChan chan string) {
-	var err         error
-	var listener    net.Listener
-	var sock        net.Conn
-	var reqCount    uint
+	var err error
+	var listener net.Listener
+	var sock net.Conn
+	var reqCount uint
 	var clientCount uint
-	var buf         []byte
+	var buf []byte
 
 	// let the OS pick an available port on the loopback interface
 	listener, err = tls.Listen("tcp", "localhost:0", &tls.Config{

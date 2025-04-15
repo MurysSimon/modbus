@@ -27,12 +27,16 @@ func TestNewReadRegsResponse(t *testing.T) {
 		return
 	}
 
-	results, err := client.ReadRegister(uint16(0), HOLDING_REGISTER)
+	time.Sleep(time.Second * 2)
+
+	results, txRaw, rxRaw, err := client.ReadRegister(uint16(0), HOLDING_REGISTER)
 	if err != nil {
 		log.Fatal(err)
 	}
 	fmt.Printf("Data type of register: %v\n", reflect.TypeOf(results))
 	fmt.Printf("Value of register: %d\n", results)
+	fmt.Printf("Raw request: %x\n", txRaw)
+	fmt.Printf("Raw response: %x\n", rxRaw)
 
 	client.Close()
 }

@@ -78,7 +78,8 @@ func (rt *rtuTransport) ExecuteRequest(req *pdu) (res *pdu, txRaw []byte, rxRaw 
 
 	// build an RTU ADU out of the request object and
 	// send the final ADU+CRC on the wire
-	n, err = rt.link.Write(rt.assembleRTUFrame(req))
+	txRaw = rt.assembleRTUFrame(req)
+	n, err = rt.link.Write(txRaw)
 	if err != nil {
 		return
 	}
@@ -92,7 +93,7 @@ func (rt *rtuTransport) ExecuteRequest(req *pdu) (res *pdu, txRaw []byte, rxRaw 
 	time.Sleep(rt.lastActivity.Add(rt.t35).Sub(time.Now()))
 
 	// read the response back from the wire
-	res, err = rt.readRTUFrame()
+	res, rxRaw, err = rt.readRTUFrame()
 
 	if err == ErrBadCRC || err == ErrProtocolError || err == ErrShortFrame {
 		// wait for and flush any data coming off the link to allow
@@ -110,7 +111,7 @@ func (rt *rtuTransport) ExecuteRequest(req *pdu) (res *pdu, txRaw []byte, rxRaw 
 }
 
 // Reads a request from the rtu link.
-func (rt *rtuTransport) ReadRequest() (req *pdu, err error) {
+func (rt *rtuTransport) ReadRequest() (req *pdu, raw []byte, err error) {
 	// reading requests from RTU links is currently unsupported
 	err = fmt.Errorf("unimplemented")
 
@@ -134,7 +135,7 @@ func (rt *rtuTransport) WriteResponse(res *pdu) (err error) {
 }
 
 // Waits for, reads and decodes a frame from the rtu link.
-func (rt *rtuTransport) readRTUFrame() (res *pdu, err error) {
+func (rt *rtuTransport) readRTUFrame() (res *pdu, rxRaw []byte, err error) {
 	var rxbuf []byte
 	var byteCount int
 	var bytesNeeded int
@@ -194,6 +195,10 @@ func (rt *rtuTransport) readRTUFrame() (res *pdu, err error) {
 		// pass the byte count + trailing data as payload, withtout the CRC
 		payload: rxbuf[2 : 3+bytesNeeded-2],
 	}
+
+	// copying packet for logging purposes
+	rxRaw = make([]byte, bytesNeeded+3)
+	copy(rxRaw, rxbuf)
 
 	return
 }
