@@ -1,5 +1,16 @@
 ## Go modbus stack
 
+### Fork reasoning
+The original library did not have any means to get whole Tx and Rx packets.
+I have decided to add Tx and Rx []byte returns to every read and write function.
+
+```golang
+result, txRaw, rxRaw, err := client.ReadRegister(uint16(0), HOLDING_REGISTER)
+	if err != nil {
+		log.Fatal(err)
+	}
+```
+
 ### Description
 This package is a go implementation of the modbus protocol.
 It aims to provide a simple-to-use, high-level API to interact with modbus
