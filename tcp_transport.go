@@ -131,16 +131,19 @@ func (tt *tcpTransport) readMBAPFrame() (p *pdu, txnId uint16, raw []byte, err e
 	var protocolId uint16
 	var unitId uint8
 
+	var rawHeader []byte
+	var rawPayload []byte
+
 	// read the MBAP header
-	rxbuf = make([]byte, mbapHeaderLength)
+	rxbuf = make([]byte, bytesNeeded+mbapHeaderLength)
 	_, err = io.ReadFull(tt.socket, rxbuf)
 	if err != nil {
 		return
 	}
 
 	// copying packet for logging purposes
-	raw = make([]byte, len(rxbuf))
-	copy(raw, rxbuf)
+	rawHeader = make([]byte, len(rxbuf))
+	copy(rawHeader, rxbuf)
 
 	// decode the transaction identifier
 	txnId = bytesToUint16(BIG_ENDIAN, rxbuf[0:2])
@@ -173,6 +176,12 @@ func (tt *tcpTransport) readMBAPFrame() (p *pdu, txnId uint16, raw []byte, err e
 	if err != nil {
 		return
 	}
+
+	// copying packet for logging purposes
+	rawPayload = make([]byte, len(rxbuf))
+	copy(rawPayload, rxbuf)
+
+	raw = append(rawHeader, rawPayload...)
 
 	// validate the protocol identifier
 	if protocolId != 0x0000 {
