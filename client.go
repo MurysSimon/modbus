@@ -1067,9 +1067,6 @@ func (mc *ModbusClient) readRegisters(addr uint16, quantity uint16, regType RegT
 		return
 	}
 
-	mc.logger.Info(fmt.Sprintf("readRegisters request: %v", req))
-	mc.logger.Info(fmt.Sprintf("readRegisters response: %v", res))
-
 	// validate the response code
 	switch {
 	case res.functionCode == req.functionCode:
